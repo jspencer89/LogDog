@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ScanlogConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Profiles>
+    <Profile>
+      <FileName>MainO</FileName>
+      <LogDirectory>C:\Virtual Hold Technology\VHLogs</LogDirectory>
+      <StringToSearch>Exception</StringToSearch>
+      <Action>
+        <SendEmail>true</SendEmail>
+        <RunBatchFile>false</RunBatchFile>
+        <BatchFileName>RestartVH.bat</BatchFileName>
+      </Action>
+      <Email>
+        <EmailSubject>Scanlog Found An Exception</EmailSubject>
+        <DestinationEmails>
+          <string>slaughter.melon132@gmail.com</string>
+        </DestinationEmails>
+      </Email>
+    </Profile>
+    <Profile>
+      <FileName>MainO</FileName>
+      <LogDirectory>C:\Virtual Hold Technology\VHLogs</LogDirectory>
+      <StringToSearch>LinkDown</StringToSearch>
+      <Action>
+        <SendEmail>true</SendEmail>
+        <RunBatchFile>false</RunBatchFile>
+        <BatchFileName></BatchFileName>
+      </Action>
+      <Email>
+        <EmailSubject>Scanlog Found A LinkDown</EmailSubject>
+        <DestinationEmails>
+          <string>slaughter.melon132@gmail.com</string>
+        </DestinationEmails>
+      </Email>
+    </Profile>
+  </Profiles>
+  <SmtpInfo>
+    <SmtpServer>smtp.gmail.com</SmtpServer>
+    <SmtpPort>587</SmtpPort>
+    <EnableSsl>true</EnableSsl>
+    <SmtpUserName>vhtscanlog@gmail.com</SmtpUserName>
+    <SmtpPassword>P@nd@F1st!</SmtpPassword>
+    <FromEmail>vhtscanlog@gmail.com</FromEmail>
+  </SmtpInfo>
+  <ChunkSize>4096</ChunkSize>
+</ScanlogConfig>
