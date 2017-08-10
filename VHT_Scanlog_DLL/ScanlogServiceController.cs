@@ -18,6 +18,7 @@ namespace VHT_Scanlog_DLL
         public static CancellationTokenSource Source { get; set; }
         public static CancellationToken Token { get; set; }
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+        private static Dictionary<string, DateTime> LogWatcherMap = new Dictionary<string, DateTime>();
         public static ConcurrentDictionary<string, FileStatus> CurrentFilesMap = new ConcurrentDictionary<string, FileStatus>();
 
         public ScanlogServiceController()
@@ -101,7 +102,7 @@ namespace VHT_Scanlog_DLL
                 Source.Cancel();
 
                 Thread.Sleep(10); // To allow current tasks to cancel gracefully
-                
+
                 // TODO stop service if log directories change?
                 Config = newConfig;
                 Log.Info("Configuration has been successfully updated");
@@ -117,7 +118,7 @@ namespace VHT_Scanlog_DLL
             {
                 Log.Error("Configuration could not be updated. Stopping Scanlog service");
                 Stop();
-            }            
+            }
         }
 
         private static bool CreateLogWatcher(string dir)
@@ -127,7 +128,7 @@ namespace VHT_Scanlog_DLL
             try
             {
                 logWatcher.Path = dir;
-                logWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                logWatcher.NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite;
                 logWatcher.IncludeSubdirectories = true;
                 logWatcher.InternalBufferSize = 8192 * 2;
                 logWatcher.Created += OnCreatedOrChanged;
@@ -148,7 +149,7 @@ namespace VHT_Scanlog_DLL
                 return false;
             }
         }
-        
+
         private static void OnCreatedOrChanged(object source, FileSystemEventArgs e)
         {
             string fileName = Path.GetFileName(e.FullPath);
@@ -158,17 +159,21 @@ namespace VHT_Scanlog_DLL
             if (CurrentFilesMap.ContainsKey(fileName))
             {
                 FileStatus currentStatus;
-                CurrentFilesMap.TryGetValue(fileName, out currentStatus);
-                if (currentStatus != null)
+                if (CurrentFilesMap.TryGetValue(fileName, out currentStatus))
                 {
-                    if (currentStatus.IsActive)
+                    DateTime lastWrite = File.GetLastWriteTime(e.FullPath);
+                    if (lastWrite != currentStatus.LastRead) //Prevents duplicate events
                     {
-                        Log.Info($"There is already an active scan for file {fileName}");
-                    }
-                    if (!currentStatus.IsActive)
-                    {
-                        Log.Info($"Changes detected for file {fileName}. Continuing scan from {currentStatus.ReadFileFromHere}");
-                        StartScan(currentStatus);
+                        if (currentStatus.IsActive)
+                        {
+                            Log.Info($"There is already an active scan for file {fileName}");
+                        }
+                        if (!currentStatus.IsActive)
+                        {
+                            Log.Info($"Changes detected for file {fileName}. Continuing scan from {currentStatus.ReadFileFromHere}");
+                            currentStatus.LastRead = lastWrite;
+                            StartScan(currentStatus);
+                        }
                     }
                 }
                 else
@@ -211,14 +216,18 @@ namespace VHT_Scanlog_DLL
             if (e.FullPath != null)
             {
                 FileStatus value;
-                while (CurrentFilesMap.ContainsKey(e.FullPath))
+                string fileName = Path.GetFileName(e.FullPath);
+                while (CurrentFilesMap.ContainsKey(fileName))
                 {
-                    if (CurrentFilesMap.TryRemove(Path.GetFileName(e.FullPath), out value))
+                    if (CurrentFilesMap.TryRemove(fileName, out value))
                     {
-                        Log.Info($"Removed {Path.GetFileName(e.FullPath)} from Active File Map");
+                        Log.Info($"Removed {fileName} from Active File Map");
                     }
-                    Log.Info($"Could not remove {Path.GetFileName(e.FullPath)} from Active File Map. Retrying...");
-                }                
+                    else
+                    {
+                        Log.Info($"Could not remove {fileName} from Active File Map. Retrying...");
+                    }
+                }
             }
         }
 
@@ -248,6 +257,7 @@ namespace VHT_Scanlog_DLL
             ScanlogServiceScanner scanner = new ScanlogServiceScanner(Config, fileStatus, Token);
             Task.Run(() => scanner.Start());
 
+            fileStatus.IsActive = true;
             AddOrUpdateStatus(fileStatus);
         }
 
@@ -261,7 +271,7 @@ namespace VHT_Scanlog_DLL
                 FilePath = filePath,
                 ReadFileFromHere = 0
             };
-            return fileStatus;            
+            return fileStatus;
         }
 
         private static void AddOrUpdateStatus(FileStatus fileStatus)
