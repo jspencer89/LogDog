@@ -13,7 +13,6 @@ namespace VHT_Scanlog_DLL
     public class ScanlogServiceController
     {
         private static ScanlogConfig Config { get; set; }
-        private static ScanlogConfig ConfigNew { get; set; }
         private static FileSystemWatcher ConfigWatcher { get; set; }
         private static List<FileSystemWatcher> LogWatchers { get; set; }
         public static CancellationTokenSource Source { get; set; }
@@ -93,9 +92,9 @@ namespace VHT_Scanlog_DLL
 
             Log.Info("New ScanlogConfig detected");
 
-            ConfigNew = ScanlogServiceConfiguration.ReadConfig();
+            ScanlogConfig newConfig = ScanlogServiceConfiguration.ReadConfig();
 
-            if (ScanlogServiceConfiguration.IsConfigValid(ConfigNew))
+            if (ScanlogServiceConfiguration.IsConfigValid(newConfig))
             {
                 DisableFileSystemWatchers();
                 Log.Warn("Cancelling token source to update configuration. Current file scans will be discarded");
@@ -104,7 +103,7 @@ namespace VHT_Scanlog_DLL
                 Thread.Sleep(10); // To allow current tasks to cancel gracefully
                 
                 // TODO stop service if log directories change?
-                Config = ConfigNew;
+                Config = newConfig;
                 Log.Info("Configuration has been successfully updated");
 
                 CancellationTokenSource newSource = new CancellationTokenSource();
@@ -118,9 +117,7 @@ namespace VHT_Scanlog_DLL
             {
                 Log.Error("Configuration could not be updated. Stopping Scanlog service");
                 Stop();
-            }
-
-            ConfigNew = null;
+            }            
         }
 
         private static bool CreateLogWatcher(string dir)
@@ -272,15 +269,20 @@ namespace VHT_Scanlog_DLL
             if (CurrentFilesMap.ContainsKey(fileStatus.FileName))
             {
                 FileStatus currentStatus;
-                CurrentFilesMap.TryGetValue(fileStatus.FileName, out currentStatus);
-
-                if (CurrentFilesMap.TryUpdate(fileStatus.FileName, fileStatus, currentStatus))
+                if (CurrentFilesMap.TryGetValue(fileStatus.FileName, out currentStatus))
                 {
-                    Log.Info($"Successfully update Current File Map for {fileStatus.FileName}: {fileStatus.IsActive} {fileStatus.FilePath} {fileStatus.ReadFileFromHere}");
+                    if (CurrentFilesMap.TryUpdate(fileStatus.FileName, fileStatus, currentStatus))
+                    {
+                        Log.Info($"Successfully updated Current File Map for {fileStatus.FileName}: {fileStatus.IsActive} {fileStatus.FilePath} {fileStatus.ReadFileFromHere}");
+                    }
+                    else
+                    {
+                        Log.Error($"Could not update Current File Map for {fileStatus.FileName}: {fileStatus.IsActive} {fileStatus.FilePath} {fileStatus.ReadFileFromHere}");
+                    }
                 }
                 else
                 {
-                    Log.Error($"Could not update Current File Map for {fileStatus.FileName}: {fileStatus.IsActive} {fileStatus.FilePath} {fileStatus.ReadFileFromHere}");
+                    Log.Error($"Could not update status for {fileStatus.FileName}|Could not get current status");
                 }
             }
             else
