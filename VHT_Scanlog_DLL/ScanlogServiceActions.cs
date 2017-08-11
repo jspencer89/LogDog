@@ -94,7 +94,7 @@ namespace VHT_Scanlog_DLL
             }
 
             message.Subject = email.EmailSubject;
-            message.Body = $"The string \"{stringToSearch}\" was detected.\nserver: {Dns.GetHostName()}\nfile: {fileName}";
+            message.Body = $"The string \"{stringToSearch}\" was detected.\nServer: {Dns.GetHostName()}\nFile: {fileName}";
 
             try
             {
