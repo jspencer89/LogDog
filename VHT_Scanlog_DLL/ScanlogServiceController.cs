@@ -266,7 +266,7 @@ namespace VHT_Scanlog_DLL
             Log.Info($"Building FileStatus for new file: {filePath}");
             FileStatus fileStatus = new FileStatus
             {
-                IsActive = true,
+                IsActive = false,
                 FileName = Path.GetFileName(filePath),
                 FilePath = filePath,
                 ReadFileFromHere = 0

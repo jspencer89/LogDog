@@ -32,7 +32,7 @@ namespace VHT_Scanlog_DLL
 
                 if (profile.Action.SendEmail)
                 {
-                    SendEmail(profile.Email, _config.SmtpInfo, stringFound, Path.GetFileName(stringFound));
+                    SendEmail(profile.Email, _config.SmtpInfo, stringFound, Path.GetFileName(fullPath));
                 }
 
                 if (profile.Action.RunBatchFile)
