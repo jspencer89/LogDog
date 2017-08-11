@@ -175,6 +175,10 @@ namespace VHT_Scanlog_DLL
                             StartScan(currentStatus);
                         }
                     }
+                    else
+                    {
+                        Log.Info($"Duplicate {e.ChangeType} event for {fileName}");
+                    }
                 }
                 else
                 {

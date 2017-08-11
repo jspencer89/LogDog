@@ -34,11 +34,11 @@ namespace VHT_Scanlog_DLL
 
             if (stringsToSearch.Any())
             {
-                _log.Info($"Begin scanning file: {CurrentStatus.FilePath}");
+                _log.Info($"Begin scanning file: {CurrentStatus.FileName}");
             }
             else
             {
-                _log.Info($"Exhausted list of StringsToSearch for file: {CurrentStatus.FilePath}");
+                _log.Info($"Exhausted list of StringsToSearch for file: {CurrentStatus.FileName}");
                 Stop();
             }            
             
@@ -47,7 +47,7 @@ namespace VHT_Scanlog_DLL
                 string chunkText;
                 var bytesRead = ReadAChunk(out chunkText);
 
-                if (bytesRead == 0 && !IsFileOpen(CurrentStatus.FilePath))
+                if (bytesRead == 0)
                 {
                     Stop();
                 }
@@ -61,12 +61,12 @@ namespace VHT_Scanlog_DLL
                         var str = stringsToSearch[index];
                         if (chunkText.ToUpper().Contains(str.ToUpper()))
                         {
-                            _log.Info($"The string {str} was found in {CurrentStatus.FilePath}");
+                            _log.Info($"The string {str} was found in {CurrentStatus.FileName}");
 
                             ScanlogServiceActions scanlogServiceActions = new ScanlogServiceActions(Config);
                             scanlogServiceActions.ProcessAction(str, CurrentStatus.FilePath);
 
-                            _log.Info($"Removing {str} from subsequent scans of file: {CurrentStatus.FilePath}");
+                            _log.Info($"Removing {str} from subsequent scans of file: {CurrentStatus.FileName}");
 
                             stringsToSearch.RemoveAt(index);
                             index--;
@@ -75,7 +75,7 @@ namespace VHT_Scanlog_DLL
 
                     if (stringsToSearch.Count == 0)
                     {
-                        _log.Info($"Exhausted list of StringsToSearch for file: {CurrentStatus.FilePath}");
+                        _log.Info($"Exhausted list of StringsToSearch for file: {CurrentStatus.FileName}");
                         Stop();
                     }
                 }
@@ -117,7 +117,7 @@ namespace VHT_Scanlog_DLL
                         {
                             if (_totalBytesRead >= fileStream.Length)
                             {
-                                _log.Info($"Reached the end of the File Stream for file {CurrentStatus.FilePath}");
+                                _log.Info($"Reached the end of the File Stream for file {CurrentStatus.FileName}");
                                 return 0;
                             }
 
@@ -140,11 +140,11 @@ namespace VHT_Scanlog_DLL
 
                 if (bytesRead == 0)
                 {
-                    _log.Error($"Could not read from file {CurrentStatus.FilePath}");
+                    _log.Error($"Could not read from file {CurrentStatus.FileName}");
                     return 0;
                 }
 
-                _log.Trace($"Successfully read {bytesRead} from file {CurrentStatus.FilePath} position {CurrentStatus.ReadFileFromHere}");
+                _log.Trace($"Successfully read {bytesRead} from file {CurrentStatus.FileName} position {CurrentStatus.ReadFileFromHere}");
 
                 chunkText = Encoding.ASCII.GetString(bytes);
 
@@ -182,16 +182,25 @@ namespace VHT_Scanlog_DLL
 
         private void UpdateFileStatus()
         {
-            if (CurrentStatus.FilePath != null)
+            if (ScanlogServiceController.CurrentFilesMap.ContainsKey(CurrentStatus.FileName))
             {
                 CurrentStatus.IsActive = false;
-                //TODO: Check if Map contains key first
                 FileStatus originalStatus;
-                ScanlogServiceController.CurrentFilesMap.TryGetValue(Path.GetFileName(CurrentStatus.FilePath), out originalStatus);
-
-                _log.Info(ScanlogServiceController.CurrentFilesMap.TryUpdate(Path.GetFileName(CurrentStatus.FilePath), CurrentStatus, originalStatus)
-                        ? $"Successfully updated Current File Map for {Path.GetFileName(CurrentStatus.FilePath)}. IsActive: {CurrentStatus.IsActive}, StartScanFromHere: {CurrentStatus.ReadFileFromHere}"
-                        : $"Could not update Current File Map for {Path.GetFileName(CurrentStatus.FilePath)}");
+                if (ScanlogServiceController.CurrentFilesMap.TryGetValue(CurrentStatus.FileName, out originalStatus))
+                {
+                    if (ScanlogServiceController.CurrentFilesMap.TryUpdate(CurrentStatus.FileName, CurrentStatus, originalStatus))
+                    {
+                        _log.Info($"Successfully updated Current File Map for {CurrentStatus.FileName}. IsActive: {CurrentStatus.IsActive}, StartScanFromHere: {CurrentStatus.ReadFileFromHere}");
+                    }
+                    else
+                    {
+                        _log.Error($"Could not update Current File Map for {CurrentStatus.FileName}");
+                    }
+                }
+                else
+                {
+                    _log.Error($"Could not get current status {CurrentStatus.FileName}");
+                }
             }
         }
 
